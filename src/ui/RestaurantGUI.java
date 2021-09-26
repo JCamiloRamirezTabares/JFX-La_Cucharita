@@ -2,7 +2,10 @@ package ui;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.swing.JOptionPane;
 
@@ -29,9 +32,12 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import model.Dish;
+import model.DishOrder;
 import model.Ingredient;
 import model.Inventory;
 import model.MEASUREMENT_TYPE;
+import model.ORDER_STATUS;
+import model.Order;
 import model.Restaurant;
 import model.User;
 
@@ -74,7 +80,7 @@ public class RestaurantGUI {
     //Variables del modulo de inventario
     private ObservableList<Ingredient> observableListIngredients;
     // instancia de la clase Inventory
-    private Inventory inventory;
+    private static Inventory inventory;
     
 	//Variables del modulo de carta
 	@FXML
@@ -97,7 +103,7 @@ public class RestaurantGUI {
 	private List<Ingredient> auxdishIngredients;
 	private ObservableList<Ingredient> obsDishIngredients;
 	
-	//Variables del modulo de pedidos
+	//Variables del modulo de pedidos para Clientes
 	@FXML
     private Label dishNameInOrderMenu;
 	@FXML
@@ -120,9 +126,49 @@ public class RestaurantGUI {
     private Button bttnLessToOrder;
     @FXML
     private ImageView imgvOrderPicture;
+    
+    private Dish dishSelected;
 	
     private ObservableList<Dish> obsDishesAvailable;
-
+    
+    //Variables del modulo de carrito
+    @FXML
+    private TableView<DishOrder> tvOrderInCart;
+    @FXML
+    private TableColumn<DishOrder, String> tcDishInCart;
+    @FXML
+    private TableColumn<DishOrder, Integer> tcAmountDishInCart;
+    @FXML
+    private TableColumn<DishOrder, Double> tcTotalPriceDishInCart;
+    @FXML
+    private Label labTotalToPay;
+    @FXML
+    private ImageView imgvPictureOrder;
+    @FXML
+    private Label labDishOrder;
+    @FXML
+    private TextField txtFDishOrderAmount;
+    @FXML
+    private Button plusAmountOrder;
+    @FXML
+    private Button lessAmountOrder;
+    @FXML
+    private Label labOrderAmounttxt;
+    
+    private DishOrder dishOrderSelected;
+    
+    private ObservableList<DishOrder> obsDishOrder;
+    
+    //Variables del modulo de pedidos para Empleados
+    @FXML
+    private TableView<Order> tvOrders;
+    @FXML
+    private TableColumn<Order, String> tcUUIDCODE;
+    @FXML
+    private TableColumn<Order, ORDER_STATUS> tcOrderStatus;
+    
+    private ObservableList<Order> obsOrders;
+    
 	//Constructor de RestaurantGUI
 	public RestaurantGUI() {
 		laCucharita = new Restaurant();
@@ -155,8 +201,8 @@ public class RestaurantGUI {
     }
 	
 	@FXML
-	void openOrderModule(ActionEvent event) throws IOException {
-		OrderMenu();
+	void openMenu(ActionEvent event) throws IOException {
+		menuModule();
     }
 	
 	@FXML
@@ -295,7 +341,7 @@ public class RestaurantGUI {
 	
 	@FXML
     void dishChoose(MouseEvent event) {
-		Dish dishSelected = tvDishesAvailable.getSelectionModel().getSelectedItem();
+		dishSelected = tvDishesAvailable.getSelectionModel().getSelectedItem();
 		
 		dishNameInOrderMenu.setText(dishSelected.getDishName());
 		txtFieldAmountDishToOrder.setText("1.0");
@@ -335,7 +381,139 @@ public class RestaurantGUI {
 
 		txtFieldAmountDishToOrder.setText(valueInText);
     }
+    
+    @FXML
+    void openCart(ActionEvent event) throws IOException {
+    	showCart();
+    }
+    
+    @FXML
+    void openOrderModule(ActionEvent event) throws IOException {
+    	OrderMenu();
+    }
+    
+    private void itializeTableViewOfOrders() {
+    	obsOrders = FXCollections.observableArrayList(laCucharita.getOrder()); /////ESTOOOOOY AAAAAACAAAAAAAAA
+    	
+		tvOrders.setItems(obsOrders);
+		tcUUIDCODE.setCellValueFactory(new PropertyValueFactory<Order, String>("UUID"));
+		tcOrderStatus.setCellValueFactory(new PropertyValueFactory<Order, ORDER_STATUS>("status"));
+    }
+    
+    @FXML
+    void addToCart(ActionEvent event) throws IOException {
+    	int amount = (int) Double.parseDouble(txtFieldAmountDishToOrder.getText());
+    	if(laCucharita.addDishToOrder(dishSelected, amount, dishSelected.getPrice()*amount)) {
+    		menuModule();
+    	}else {
+    		printWarning("Ha ocurrido un error, no se ha podido agregar el platillo al carrito");
+    	}
+    	
+    }
+    
+    private void itializeTableViewOfItemsInCart() {
+		obsDishOrder = FXCollections.observableArrayList(laCucharita.getMiniOrder()); /////ESTOOOOOY AAAAAACAAAAAAAAA
+    	
+		tvOrderInCart.setItems(obsDishOrder);
+		tcDishInCart.setCellValueFactory(new PropertyValueFactory<DishOrder, String>("dishName"));
+		tcAmountDishInCart.setCellValueFactory(new PropertyValueFactory<DishOrder, Integer>("amountOrderedDish"));
+		tcTotalPriceDishInCart.setCellValueFactory(new PropertyValueFactory<DishOrder, Double>("totalPrice"));
+    }
 	
+    public double totalToPay() {
+    	double total = 0;
+    	
+    	for(int i = 0; i < laCucharita.getMiniOrder().size(); i++) {
+    		if(laCucharita.getMiniOrder().get(i).getTotalPrice() != 0) {
+    			total = total + laCucharita.getMiniOrder().get(i).getTotalPrice();
+    		}
+    	}
+    	
+    	return total;
+    }
+    
+    @FXML
+    void dishOrderChoose(MouseEvent event) {
+    	dishOrderSelected = tvOrderInCart.getSelectionModel().getSelectedItem();
+    	
+    	labDishOrder.setText(dishOrderSelected.getDishName());
+    	txtFDishOrderAmount.setText("" + dishOrderSelected.getAmountOrderedDish());
+    	
+    	imgvPictureOrder.setVisible(true);
+        labDishOrder.setVisible(true);
+        txtFDishOrderAmount.setVisible(true);
+        plusAmountOrder.setVisible(true);
+        lessAmountOrder.setVisible(true);
+        labOrderAmounttxt.setVisible(true);
+    }
+    
+    @FXML
+    void lessAmountOrder(ActionEvent event) {
+    	double amount = Double.parseDouble(txtFDishOrderAmount.getText());
+    	
+    	if(amount > 1) {
+    		amount = lessValue(amount);
+    	}
+
+		String valueInText = "" + amount;
+
+		txtFDishOrderAmount.setText(valueInText);
+    }
+
+    @FXML
+    void plusAmountOrder(ActionEvent event) {
+    	double amount = Double.parseDouble(txtFDishOrderAmount.getText());
+
+    	amount = plusValue(amount);
+
+		String valueInText = "" + amount;
+
+		txtFDishOrderAmount.setText(valueInText);
+    }
+    
+    @FXML
+    void applyChangestoOrder(ActionEvent event) throws IOException {
+    	int newAmount = (int)Double.parseDouble(txtFDishOrderAmount.getText());
+    	
+    	for(int i = 0; i < laCucharita.getMiniOrder().size(); i++) {
+    		if(dishOrderSelected == laCucharita.getMiniOrder().get(i)) {
+    			laCucharita.getMiniOrder().get(i).setAmountOrderedDish(newAmount);
+    			laCucharita.getMiniOrder().get(i).setTotalPrice(newAmount*laCucharita.getMiniOrder().get(i).getOrderedDish().getPrice());
+    		}
+    	}
+    	
+    	showCart();
+    }
+    
+    @FXML
+    void deleteThisOrder(ActionEvent event) throws IOException {
+    	for(int i = 0; i < laCucharita.getMiniOrder().size(); i++) {
+    		if(dishOrderSelected == laCucharita.getMiniOrder().get(i)) {
+    			laCucharita.getMiniOrder().remove(i);
+    		}
+    	}
+    	
+    	showCart();
+    }
+    
+    @FXML
+    void newOrder(ActionEvent event) {
+    	String theAlphaNumericS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+    	StringBuilder builder = new StringBuilder();
+    	
+    	for (int i = 0; i < 10; i++) { 
+            int myindex  = (int)(theAlphaNumericS.length() * Math.random()); 
+
+            // add the characters
+            builder.append(theAlphaNumericS.charAt(myindex)); 
+        }
+    	
+    	if(laCucharita.addOrder(builder.toString(), (ArrayList<DishOrder>) laCucharita.getMiniOrder())) {
+    		printWarning("Tu pedido ha pasado a estar en proceso, porfavor estar al tanto de su estado en el menu: Estado del Pedido");
+    	} else {
+    		printWarning("No se ha podido registrar tu pedido, porfavor ponte en contacto con nosotros");
+    	}
+    }
 	
 	
 	/**Metodos de mostrar modulos*/
@@ -382,7 +560,7 @@ public class RestaurantGUI {
 	
 	//Este metodo muestra en pantalla el modulo de carta
 	public void DishMenu() throws IOException {
-		FXMLLoader fxmlloader = new FXMLLoader(getClass().getResource("menu_module.fxml"));
+		FXMLLoader fxmlloader = new FXMLLoader(getClass().getResource("register_dish_module.fxml"));
 		fxmlloader.setController(this);
 		Parent log = fxmlloader.load();
 		mainPane.getChildren().setAll(log);
@@ -400,13 +578,32 @@ public class RestaurantGUI {
 	}
 
 	//Este metodo muestra en pantalla el modulo de Pedidos
+	public void menuModule() throws IOException {
+		FXMLLoader fxmlloader = new FXMLLoader(getClass().getResource("menu_module.fxml"));
+    	fxmlloader.setController(this);
+    	Parent log = fxmlloader.load();
+    	mainPane.getChildren().setAll(log);
+    	
+    	itializeTableViewOfDishesAvailable();
+	}
+	
+	public void showCart() throws IOException {
+		FXMLLoader fxmlloader = new FXMLLoader(getClass().getResource("cart.fxml"));
+    	fxmlloader.setController(this);
+    	Parent log = fxmlloader.load();
+    	mainPane.getChildren().setAll(log);
+    	
+    	itializeTableViewOfItemsInCart();
+    	labTotalToPay.setText("" + totalToPay());
+	}
+	
 	public void OrderMenu() throws IOException {
 		FXMLLoader fxmlloader = new FXMLLoader(getClass().getResource("order_module.fxml"));
     	fxmlloader.setController(this);
     	Parent log = fxmlloader.load();
     	mainPane.getChildren().setAll(log);
     	
-    	itializeTableViewOfDishesAvailable();
+    	itializeTableViewOfOrders();
 	}
 
 	//Este metodo muestra la pantalla del modulo de inventario
@@ -418,7 +615,10 @@ public class RestaurantGUI {
     	
     	measurementType.getItems().addAll(MEASUREMENT_TYPE.MILLILITERS, MEASUREMENT_TYPE.GRAMS, MEASUREMENT_TYPE.UNITS, MEASUREMENT_TYPE.KILOGRAMS);
     	
-    	itializeTableView();
+    	itializeTableViewInventory();
+    	
+    	
+    	
 	}
 	
 	//Este metodo muestra la pantalla del modulo de empleados
@@ -434,7 +634,7 @@ public class RestaurantGUI {
 	//Este metodo hace el registor a un empleado
     @FXML
     public void createAccount(ActionEvent event) {
-    	if(!txtUserName.getText().equals("") && !id.getText().equals("") &&birthday.getValue()!=null  &&  !passwordField.getText().equals("")){
+    	if(!id.getText().equals("") && !txtUserName.getText().equals("") &&birthday.getValue()!=null  &&  !passwordField.getText().equals("")){
     		if(!id.getText().equals("") && !txtUserName.getText().equals("")  &&birthday.getValue()!=null  &&  !passwordField.getText().equals("")){
 
     			laCucharita.createAccount(id.getText(), txtUserName.getText(), birthday.getValue(),passwordField.getText());
@@ -543,7 +743,7 @@ public class RestaurantGUI {
 	  
 	    // este metodo es para agregar un nuevo ingrediente desde el inventario
 	    @FXML
-	    void addNewIngredient(ActionEvent event) {
+	    public void addNewIngredient(ActionEvent event) {
 	    	String name ="";
 	    	MEASUREMENT_TYPE type;
 	    	double amount = -1;
@@ -563,17 +763,22 @@ public class RestaurantGUI {
 	    		printWarning("Please, Complete all fields");
 			} else if (inventory.ingredientExist(name)){
 				printWarning("The ingredient you want to add already exists, try modifying its amount");
-			} else {
+			} else if (amount!=-1){
 				inventory.addNewIngredient(name, type, amount);
+
 				printWarning("The new ingredient was successfully registered");
-				itializeTableView();
+				itializeTableViewInventory();
+
 			}
 	    	
 	    }
 
 	    
 	    // Este metodo inicializa la lista que muestra los ingredinetes en el modulo de inventario
-	    private void itializeTableView() {
+	    public void itializeTableViewInventory() {
+	    	
+	    	sortByName();
+	    	
 	    	observableListIngredients = FXCollections.observableArrayList(inventory.getIngredients());
 	    	
 	    	tvIngredients.setItems(observableListIngredients);
@@ -584,17 +789,40 @@ public class RestaurantGUI {
 	    
 	    // este metodo es para restar en 1 la cantidad del ingrediente seleccionado
 	    @FXML
-	    void less(ActionEvent event) {
-
+	    public void less(ActionEvent event) throws IOException {
+	    	if(tvIngredients.getSelectionModel().getSelectedItem()==null) {
+	    		
+	    		printWarning("Primero seleccione un ingrediente de la lista");
+	    		
+	    	}else if(tvIngredients.getSelectionModel().getSelectedItem().getAmount()>0) {
+	    		
+	    	tvIngredients.getSelectionModel().getSelectedItem().setAmount(tvIngredients.getSelectionModel().getSelectedItem().getAmount()-1);
+	    	printWarning("se resto -1");
+	    	
+	    	}else {
+	    		
+	    		printWarning("no puede tener cantidades negativas");
+	    		
+	    	}	 
+	    	OpenInventory();
 	    }
-	    
-	    
-
-	    
+	    	    
 	    // este metodo es para restar en 1 la cantidad del ingrediente seleccionado
 	    @FXML
-	    void plus(ActionEvent event) {
-
+	    public void plus(ActionEvent event) throws IOException {
+	    	if(tvIngredients.getSelectionModel().getSelectedItem()!=null) {
+	    		tvIngredients.getSelectionModel().getSelectedItem().setAmount(tvIngredients.getSelectionModel().getSelectedItem().getAmount()+1);
+		    	printWarning("se aumento +1");
+		    	OpenInventory();
+	    	}else {
+	    		printWarning("Primero seleccione un ingrediente de la lista");
+	    	}
+	    	
+	    }
+	    
+	    // este metodo ordena el arreglo de ingredientes por nombre
+	    public void sortByName() {
+	    	Collections.sort(inventory.getIngredients());
 	    }
 	    
 	    
