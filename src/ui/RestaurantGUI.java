@@ -1,11 +1,10 @@
 package ui;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import javax.swing.JOptionPane;
 
@@ -159,6 +158,18 @@ public class RestaurantGUI {
     
     private ObservableList<DishOrder> obsDishOrder;
     
+
+    //Variables de cambiar contraseña
+    @FXML
+    private TextField idconfirm;
+    
+    @FXML
+    private PasswordField passwordConfirm;
+
+    @FXML
+    private PasswordField passwordNew;
+
+
     //Variables del modulo de pedidos para Empleados
     @FXML
     private TableView<Order> tvOrders;
@@ -166,8 +177,27 @@ public class RestaurantGUI {
     private TableColumn<Order, String> tcUUIDCODE;
     @FXML
     private TableColumn<Order, ORDER_STATUS> tcOrderStatus;
+    @FXML
+    private Label labUUIDCODE;
+    @FXML
+    private Label labOrderDate;
+    @FXML
+    private ComboBox<ORDER_STATUS> combBoxStatus;
+    @FXML
+    private TableView<DishOrder> tvDishesOrder;
+    @FXML
+    private TableColumn<DishOrder, String> tcDishNameOrdered;
+    @FXML
+    private TableColumn<DishOrder, Integer> tcAmountDishesOrder;
+    @FXML
+    private TableColumn<DishOrder, Double> tcTotalPriceOrder;
+    @FXML
+    private Label labTotalPriceToPay;
+    
+    private Order orderSelected;
     
     private ObservableList<Order> obsOrders;
+    private ObservableList<DishOrder> obsDishesInOrder;
     
 	//Constructor de RestaurantGUI
 	public RestaurantGUI() {
@@ -176,11 +206,26 @@ public class RestaurantGUI {
 		auxdishIngredients = new ArrayList<Ingredient>();
 	}
 	
+	//Este metodo exporta la informacion serializada
+	@FXML
+    void exportData(ActionEvent event) throws FileNotFoundException, IOException {
+		inventory.saveIngredients();
+		printWarning("Se ha exportado la informacion");
+    }
+
+	//Este metodo importa la informacion serializada
+    @FXML
+    void importData(ActionEvent event) throws FileNotFoundException, ClassNotFoundException, IOException{
+    	inventory.loadIngredients();
+    	printWarning("Se ha importado la informacion");
+		
+    }
+	
 	/**Metodos de Acciones:*/
 	
 	//Este metodo evalua si el usuario esta registrado en la lista y si lo esta permite acceder a los demas modulos
 	@FXML
-    void LogIn(ActionEvent event) throws IOException {
+    public void LogIn(ActionEvent event) throws IOException {
 		String user = loginUserField.getText();
 		String password = loginPassField.getText();
 		
@@ -341,21 +386,23 @@ public class RestaurantGUI {
 	
 	@FXML
     void dishChoose(MouseEvent event) {
-		dishSelected = tvDishesAvailable.getSelectionModel().getSelectedItem();
-		
-		dishNameInOrderMenu.setText(dishSelected.getDishName());
-		txtFieldAmountDishToOrder.setText("1.0");
-		labDishPriceValue.setText("" + dishSelected.getPrice());
-		
-		dishNameInOrderMenu.setVisible(true);
-		txtFieldAmountDishToOrder.setVisible(true);
-	    labDishPriceText.setVisible(true);
-	    labDishPriceValue.setVisible(true);
-	    bttnAddToCart.setVisible(true);
-	    bttnPlusToOrder.setVisible(true);
-	    bttnLessToOrder.setVisible(true);
-	    imgvOrderPicture.setVisible(true);
-		
+		if(tvDishesAvailable.getSelectionModel().getSelectedItem() != null) {
+			
+			dishSelected = tvDishesAvailable.getSelectionModel().getSelectedItem();
+			
+			dishNameInOrderMenu.setText(dishSelected.getDishName());
+			txtFieldAmountDishToOrder.setText("1.0");
+			labDishPriceValue.setText("" + dishSelected.getPrice());
+			
+			dishNameInOrderMenu.setVisible(true);
+			txtFieldAmountDishToOrder.setVisible(true);
+		    labDishPriceText.setVisible(true);
+		    labDishPriceValue.setVisible(true);
+		    bttnAddToCart.setVisible(true);
+		    bttnPlusToOrder.setVisible(true);
+		    bttnLessToOrder.setVisible(true);
+		    imgvOrderPicture.setVisible(true);
+		}
     }
 	
 	@FXML
@@ -434,17 +481,20 @@ public class RestaurantGUI {
     
     @FXML
     void dishOrderChoose(MouseEvent event) {
-    	dishOrderSelected = tvOrderInCart.getSelectionModel().getSelectedItem();
-    	
-    	labDishOrder.setText(dishOrderSelected.getDishName());
-    	txtFDishOrderAmount.setText("" + dishOrderSelected.getAmountOrderedDish());
-    	
-    	imgvPictureOrder.setVisible(true);
-        labDishOrder.setVisible(true);
-        txtFDishOrderAmount.setVisible(true);
-        plusAmountOrder.setVisible(true);
-        lessAmountOrder.setVisible(true);
-        labOrderAmounttxt.setVisible(true);
+    	if(tvOrderInCart.getSelectionModel().getSelectedItem() != null) {
+    		
+    		dishOrderSelected = tvOrderInCart.getSelectionModel().getSelectedItem();
+        	
+        	labDishOrder.setText(dishOrderSelected.getDishName());
+        	txtFDishOrderAmount.setText("" + dishOrderSelected.getAmountOrderedDish());
+        	
+        	imgvPictureOrder.setVisible(true);
+            labDishOrder.setVisible(true);
+            txtFDishOrderAmount.setVisible(true);
+            plusAmountOrder.setVisible(true);
+            lessAmountOrder.setVisible(true);
+            labOrderAmounttxt.setVisible(true);
+    	}
     }
     
     @FXML
@@ -498,6 +548,24 @@ public class RestaurantGUI {
     
     @FXML
     void newOrder(ActionEvent event) {
+    	String UUIDCODE = generateRandomUUID();
+    	
+    	if(!laCucharita.getMiniOrder().isEmpty()) {
+    		if(laCucharita.addOrder(UUIDCODE, (ArrayList<DishOrder>) laCucharita.getMiniOrder())) {
+        		printWarning("Tu pedido ha pasado a estar en proceso, porfavor estar al tanto de su estado en el menu: Estado del Pedido");
+        		laCucharita.setMiniOrder(new ArrayList<DishOrder>());
+        	} else {
+        		printWarning("No se ha podido registrar tu pedido, porfavor ponte en contacto con nosotros");
+        	}
+    		
+    	} else {
+    		printWarning("No hay ningun platillo seleccionado aun");
+    	}
+    	
+    	
+    }
+    
+    public String generateRandomUUID() {
     	String theAlphaNumericS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
     	StringBuilder builder = new StringBuilder();
     	
@@ -508,13 +576,200 @@ public class RestaurantGUI {
             builder.append(theAlphaNumericS.charAt(myindex)); 
         }
     	
-    	if(laCucharita.addOrder(builder.toString(), (ArrayList<DishOrder>) laCucharita.getMiniOrder())) {
-    		printWarning("Tu pedido ha pasado a estar en proceso, porfavor estar al tanto de su estado en el menu: Estado del Pedido");
-    	} else {
-    		printWarning("No se ha podido registrar tu pedido, porfavor ponte en contacto con nosotros");
-    	}
+    	return builder.toString();
     }
 	
+    @FXML
+    void orderChoose(MouseEvent event) {
+    	
+    	if(tvOrders.getSelectionModel().getSelectedItem() != null) {
+    		
+    		orderSelected = tvOrders.getSelectionModel().getSelectedItem();
+        	double totalPrice = 0;
+        	
+        	for (int i = 0; i < orderSelected.getOrderedDishes().size(); i++) {
+        		totalPrice = totalPrice + orderSelected.getOrderedDishes().get(i).getTotalPrice();
+    		}
+        	
+        	labUUIDCODE.setText(orderSelected.getUUID());
+        	labOrderDate.setText(orderSelected.getOrderDate());
+        	labTotalPriceToPay.setText("" + totalPrice);
+        	
+        	if(orderSelected.getStatus().equals(ORDER_STATUS.PENDING)) {
+        		combBoxStatus.setValue(ORDER_STATUS.PENDING);
+        	} else if(orderSelected.getStatus().equals(ORDER_STATUS.IN_PROCESS)) {
+        		combBoxStatus.setValue(ORDER_STATUS.IN_PROCESS);
+        	} else if(orderSelected.getStatus().equals(ORDER_STATUS.DELIVERED)){
+        		combBoxStatus.setValue(ORDER_STATUS.DELIVERED);
+        	} else {
+        		
+        	}
+        	
+        	itializeTableViewOfDishesInOrder();
+    	}
+    }
+    
+    @FXML
+    void evaluateStatusComboBox(ActionEvent event) throws IOException {
+    	List<Ingredient> totalIngredientsList = new ArrayList<Ingredient>();
+    	boolean orderApproval = true;
+    	
+    	//Proceso que permite evaluar si se puede aceptar un pedido
+    	if(combBoxStatus.getValue().equals(ORDER_STATUS.IN_PROCESS)) {
+    		
+    		//Proceso que llena una lista con todos los ingredientes que se usaran para preparar la orden que se selecciono
+    		for(int i = 0; i < orderSelected.getOrderedDishes().size(); i++) {
+				for (int j = 0; j < orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().size(); j++) {
+					if(!totalIngredientsList.isEmpty()) {
+						for (int j2 = 0; j2 < totalIngredientsList.size(); j2++) {
+							if(totalIngredientsList.get(j2).getName().equals(orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getName())) {
+								
+								double accumulatedIngredients = totalIngredientsList.get(j2).getAmount() + orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getAmount() * orderSelected.getOrderedDishes().get(i).getAmountOrderedDish();
+								
+								printWarning("" + totalIngredientsList.get(j2).getAmount());
+								printWarning("" + orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getAmount());
+								printWarning("" + orderSelected.getOrderedDishes().get(i).getAmountOrderedDish());
+								
+								
+								totalIngredientsList.get(j2).setAmount(accumulatedIngredients);
+								
+							} else {
+								
+								String name = orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getName();
+								MEASUREMENT_TYPE type = orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getMeasurement();
+								
+								double amount = orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getAmount() * orderSelected.getOrderedDishes().get(i).getAmountOrderedDish();
+								
+								totalIngredientsList.add(new Ingredient(name, type, amount));
+							}
+						}
+					} else {
+						
+						String name = orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getName();
+						MEASUREMENT_TYPE type = orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getMeasurement();
+						
+						double amount = orderSelected.getOrderedDishes().get(i).getOrderedDish().getIngredientList().get(j).getAmount() * orderSelected.getOrderedDishes().get(i).getAmountOrderedDish();
+						
+						totalIngredientsList.add(new Ingredient(name, type, amount));
+					}
+					
+				}
+			}
+    		
+    		int count = 0;
+    		//Proceso que verifica si el stock en inventario permite aceptar el pedido
+    		for (int i = 0; i < totalIngredientsList.size(); i++) {
+				for (int j = 0; j < inventory.getIngredients().size(); j++) {
+					if(totalIngredientsList.get(i).getName().equals(inventory.getIngredients().get(j).getName())) {
+						if(totalIngredientsList.get(i).getAmount() <= inventory.getIngredients().get(j).getAmount()) {
+							
+						} else {
+							orderApproval = false;
+						}
+					}
+				}
+			}
+    		
+    		
+    		boolean sentinel = false;
+    		if(orderApproval == true) {
+    			for (int i = 0; i < laCucharita.getOrder().size() && sentinel == false; i++) {
+					if(orderSelected.equals(laCucharita.getOrder().get(i))) {
+						sentinel = true;
+						
+						if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.PENDING)) {
+	    					
+							laCucharita.getOrder().get(i).setStatus(ORDER_STATUS.IN_PROCESS);
+							printWarning("El pedido seleccionado ha pasado a estar en proceso");
+							
+							
+							for (int j = 0; j < inventory.getIngredients().size(); j++) {
+								boolean sentinel2 = false;
+								
+								int j2 = 0;
+								while(j2 < totalIngredientsList.size() && sentinel2 == false) {
+									if(totalIngredientsList.get(j2).getName().equals(inventory.getIngredients().get(j).getName())) {
+										sentinel2 = true;
+										
+										printWarning("" + inventory.getIngredients().get(j).getAmount());
+										printWarning("" + totalIngredientsList.get(j2).getAmount());
+										
+										double newAmountIngredient = inventory.getIngredients().get(j).getAmount() - totalIngredientsList.get(j2).getAmount();
+										//Aquiiiiiiiiiiiiiiiiiii estooooooooooooooooooooyyyyyyyyyyyyyyyyyyyyyyy ATT: JUANK
+										inventory.getIngredients().get(j).setAmount(newAmountIngredient);
+										
+									} else {
+										j2++;
+									}
+									
+								}
+							}
+							
+	    				}  else if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.IN_PROCESS)) {
+	    					printWarning("El pedido seleccionado ya paso a estar en proceso");
+	    				} else if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.DELIVERED)) {
+	    					printWarning("El pedido seleccionado ya fue entregado");
+	    				} else {
+	    					printWarning("El pedido seleccionado ya ha sido rechazado previamente");
+	    				}
+						
+					}
+				}
+    			
+    			OrderMenu();
+    			
+    		} else {
+    			printWarning("El pedido seleccionado supera la cantidad en stock");
+    		}
+    		
+    	} else if(combBoxStatus.getValue().equals(ORDER_STATUS.DELIVERED)) {
+    		boolean sentinel = false;
+    		
+    		for (int i = 0; i < laCucharita.getOrder().size() && sentinel == false; i++) {
+				if(orderSelected.equals(laCucharita.getOrder().get(i))) {
+					sentinel = true;
+					
+					if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.IN_PROCESS)) {
+						laCucharita.getOrder().get(i).setStatus(ORDER_STATUS.DELIVERED);
+						OrderMenu();
+					}  else {
+						printWarning("El pedido seleccionado no se encuentra en proceso, porfavor verifica que este se encuentre en proceso");
+					}
+				}
+			}
+			
+    	} else if(combBoxStatus.getValue().equals(ORDER_STATUS.PENDING)) {
+    		
+    		boolean sentinel = false;
+
+    		for (int i = 0; i < laCucharita.getOrder().size() && sentinel == false; i++) {
+    			if(orderSelected.equals(laCucharita.getOrder().get(i))) {
+    				sentinel = true;
+
+    				if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.PENDING)) {
+    					printWarning("El pedido seleccionado ya se encuentra en pendiente por atender");
+    				}  else if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.IN_PROCESS)) {
+    					printWarning("El pedido seleccionado ya paso a estar en proceso");
+    				} else if(laCucharita.getOrder().get(i).getStatus().equals(ORDER_STATUS.DELIVERED)) {
+    					printWarning("El pedido seleccionado ya fue entregado");
+    				} else {
+    					printWarning("El pedido seleccionado ya ha sido rechazado previamente");
+    				}
+    			}
+    		}
+    		
+    	}
+    	
+    }
+    
+    private void itializeTableViewOfDishesInOrder() {
+    	obsDishesInOrder = FXCollections.observableArrayList(orderSelected.getOrderedDishes()); /////ESTOOOOOY AAAAAACAAAAAAAAA
+    	
+		tvDishesOrder.setItems(obsDishesInOrder);
+		tcDishNameOrdered.setCellValueFactory(new PropertyValueFactory<DishOrder, String>("dishName"));
+		tcAmountDishesOrder.setCellValueFactory(new PropertyValueFactory<DishOrder, Integer>("amountOrderedDish"));
+		tcTotalPriceOrder.setCellValueFactory(new PropertyValueFactory<DishOrder, Double>("totalPrice"));
+    }
 	
 	/**Metodos de mostrar modulos*/
 	
@@ -603,6 +858,7 @@ public class RestaurantGUI {
     	Parent log = fxmlloader.load();
     	mainPane.getChildren().setAll(log);
     	
+    	combBoxStatus.getItems().addAll(ORDER_STATUS.PENDING, ORDER_STATUS.IN_PROCESS, ORDER_STATUS.DELIVERED);
     	itializeTableViewOfOrders();
 	}
 
@@ -631,42 +887,48 @@ public class RestaurantGUI {
 		initializeTableViewEmployees();
 	}
 	
-	//Este metodo hace el registor a un empleado
+	//Este metodo hace el registro a un empleado
     @FXML
     public void createAccount(ActionEvent event) {
-    	if(!id.getText().equals("") && !txtUserName.getText().equals("") &&birthday.getValue()!=null  &&  !passwordField.getText().equals("")){
-    		if(!id.getText().equals("") && !txtUserName.getText().equals("")  &&birthday.getValue()!=null  &&  !passwordField.getText().equals("")){
+    	String cc ="";
+    	cc = id.getText();
 
-    			laCucharita.createAccount(id.getText(), txtUserName.getText(), birthday.getValue(),passwordField.getText());
+    	
+    	if (laCucharita.employeeExist(cc)){
+			printWarning("The ingredient you want to add already exists, try modifying its amount");
+			
+		}else if(!id.getText().equals("") && !txtUserName.getText().equals("")  &&birthday.getValue()!=null  &&  !passwordField.getText().equals("")){
 
-    			Alert alert = new Alert(AlertType.INFORMATION);
-    			alert.setTitle("Cuenta creada");
-    			alert.setHeaderText(null);
-    			alert.setContentText("Se ha creado un nuevo empleado!" + "\n" + "Bienvenido " + txtUserName.getText() + "!");
+    		laCucharita.createAccount(id.getText(), txtUserName.getText(), birthday.getValue(),passwordField.getText());
 
-    			alert.showAndWait();
+    		Alert alert = new Alert(AlertType.INFORMATION);
+    		alert.setTitle("Cuenta creada");
+    		alert.setHeaderText(null);
+    		alert.setContentText("Se ha creado un nuevo empleado!" + "\n" + "Bienvenido " + txtUserName.getText() + "!");
 
-    			txtUserName.clear();
-    			id.clear();
-    			passwordField.clear();
+    		alert.showAndWait();
 
-    			birthday.setValue(null);
+    		txtUserName.clear();
+    		id.clear();
+    		passwordField.clear();
 
+    		birthday.setValue(null);
 
+    		
+    		
 
+    	}else {
+    		Alert alert = new Alert(AlertType.ERROR);
+    		alert.setTitle("Acceso denegado");
+    		alert.setHeaderText(null);
+    		alert.setContentText("Debes completar cada campo en el formulario");
 
-    		}else {
-    			Alert alert = new Alert(AlertType.ERROR);
-    			alert.setTitle("Acceso denegado");
-    			alert.setHeaderText(null);
-    			alert.setContentText("Debes completar cada campo en el formulario");
-
-    			alert.showAndWait();
-    		}
-
-    		initializeTableViewEmployees();
-
+    		alert.showAndWait();
     	}
+
+    	initializeTableViewEmployees();
+
+
     }
     	
 	
@@ -698,7 +960,47 @@ public class RestaurantGUI {
 	
 	
 	
+	//Este metodo envia al usuario a otra ventana para cambiar la contraseña
+	@FXML
+    public void changePassword(ActionEvent event) throws IOException{
+		FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("change_Password.fxml"));
+        fxmlLoader.setController(this);
+        Parent root = fxmlLoader.load();
+        Scene scene = new Scene(root);
+
+        mainStage.setScene(scene);
+        mainStage.setTitle("Password change module");
+        mainStage.show();
+    }
 	
+	
+	//Cambia la contraseña del arreglo
+	@FXML
+	public void changePasswordEmployee(ActionEvent event)throws IOException {
+		String user = idconfirm.getText();
+		String password = passwordConfirm.getText();
+		String passwordN = passwordNew.getText();
+
+		if(!user.equals("") && !password.equals("")) {
+			if(laCucharita.evaluate_If_User_Can_LogIn(user, password)) {
+				for (int i = 0; i < laCucharita.getUserList().size(); i++) {
+					if (user.equals(laCucharita.getUserList().get(i).getId()) && password.equals(laCucharita.getUserList().get(i).getPassword())) {
+						laCucharita.getUserList().get(i).setPassword(passwordN);
+					}
+				}
+				printWarning("Se realizo exitosamente el cambio");
+
+			} else {
+				printWarning("El usuario o la contraseña es incorrecto");
+			}
+		} else {
+			printWarning("Por favor llenar todos los campos");
+		}
+
+
+
+
+	}
 	
 	
 	
